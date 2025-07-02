@@ -1,9 +1,9 @@
 loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/NoLag-id/No-Lag-HUB/refs/heads/main/Loader/LoaderV1.lua"))()
 
 --[[ 
-    @author depso (depthso)
-    @description Grow a Garden stock bot script
-    Discord + Facebook Posting
+	@author Laire Neil
+	@description Grow a Garden stock bot script
+	Discord + Make.com Posting (FB Page, Group, Messenger)
 ]]
 
 type table = {
@@ -13,20 +13,15 @@ type table = {
 _G.Configuration = {
 	--// Reporting
 	["Enabled"] = true,
-	["Webhook"] = "https://discord.com/api/webhooks/1389035637566345418/SJ-vZO6SigPj74kpC1l00vhTCBEWO6pNk3g6ap6lMvWoRfHthFsn41ooOSorYiwOdXrt", -- Replace with your Discord webhook
+	["Webhook"] = "https://discord.com/api/webhooks/1389872635713945610/NPjEQKE8aK0iXMioXOlvKDllGEXoGyqWFWCiCUWvbJ9ODgooIJDpDZbmi4tflnlrRCs-", -- Replace
 	["Weather Reporting"] = true,
 
-	--// Facebook Integration
-	["Facebook Enabled"] = true,
-	["Facebook Page ID"] = "112539638184963", -- Your Facebook Page ID
-	["Facebook Access Token"] = "EAAJsbRazAzYBOxYGBmliSZCZAC0c62DVwQ0PTG6jdBSZB0aPPCHXJ9FHxaOaYL6lpgHxKZC7zPRnv4Hgli8mQqZAKTWo7tWJZBWj8OtJ2vrPZC3HqIEEkm84v6QuuvCcI3IYLMNsaBVHV3B20nDMcNTLMZBWBcJpR1Wp6b3zcIbq77D00H8omNMkmxuSGL4XxxlXStpiF9iZBaykKRwLMtZBmpCaMZD", -- Long-lived Page Access Token
-
-	--// User
+	--// User Settings
 	["Anti-AFK"] = true,
 	["Auto-Reconnect"] = true,
 	["Rendering Enabled"] = false,
 
-	--// Embeds
+	--// Embed Layouts
 	["AlertLayouts"] = {
 		["Weather"] = {
 			EmbedColor = Color3.fromRGB(42, 109, 255),
@@ -74,51 +69,32 @@ local WeatherEventStarted = ReplicatedStorage.GameEvents.WeatherEventStarted
 
 local LocalPlayer = Players.LocalPlayer
 
---// Facebook Posting
-local function FacebookPost(Message: string)
-	local FacebookEnabled = _G.Configuration["Facebook Enabled"]
-	local PageID = _G.Configuration["Facebook Page ID"]
-	local AccessToken = _G.Configuration["Facebook Access Token"]
+--// Make.com Integration
+local function SendToMakeCom(payload: table)
+	local MakeWebhook = "https://hook.eu2.make.com/69qy7aj17oh5lhyn3lv7gunwy1ys1l59" -- Replace this
+	local body = HttpService:JSONEncode(payload)
 
-	if not FacebookEnabled or PageID == "" or AccessToken == "" then return end
-
-	local FacebookURL = `https://graph.facebook.com/{PageID}/feed`
-
-	local EncodedMessage = HttpService:UrlEncode(Message)
-	local EncodedToken = HttpService:UrlEncode(AccessToken)
-	local PostBody = `message={EncodedMessage}&access_token={EncodedToken}`
-
-	local RequestData = {
-		Url = FacebookURL,
-		Method = "POST",
-		Headers = {
-			["Content-Type"] = "application/x-www-form-urlencoded"
-		},
-		Body = PostBody
-	}
-
-	task.spawn(function()
-		local success, err = pcall(function()
-			request(RequestData)
-		end)
-		if not success then
-			warn("Facebook post failed:", err)
-		end
+	local success, err = pcall(function()
+		request({
+			Url = MakeWebhook,
+			Method = "POST",
+			Headers = { ["Content-Type"] = "application/json" },
+			Body = body
+		})
 	end)
+
+	if not success then
+		warn("Make.com Webhook failed:", err)
+	end
 end
 
---// Utilities
+--// Util
 local function GetConfigValue(Key: string)
 	return _G.Configuration[Key]
 end
 
-RunService:Set3dRenderingEnabled(GetConfigValue("Rendering Enabled"))
-if _G.StockBot then return end
-_G.StockBot = true
-
 local function ConvertColor3(Color: Color3): number
-	local Hex = Color:ToHex()
-	return tonumber(Hex, 16)
+	return tonumber(Color:ToHex(), 16)
 end
 
 local function GetDataPacket(Data, Target: string)
@@ -127,144 +103,219 @@ local function GetDataPacket(Data, Target: string)
 			return Packet[2]
 		end
 	end
-	return
 end
 
 local function GetLayout(Type: string)
 	return GetConfigValue("AlertLayouts")[Type]
 end
 
+local EmojiMap = {
+	["Carrot"] = "🥕",
+	["Strawberry"] = "🍓",
+	["Blueberry"] = "🫐",
+	["Tomato"] = "🍅",
+	["Cauliflower"] = "🥦", -- closest emoji
+	["Watermelon"] = "🍉",
+	["Rafflesia"] = "🌸",
+	["Green"] = "🟢",
+	["Apple"] = "🍎",
+	["Avocado"] = "🥑",
+	["Banana"] = "🍌",
+	["Pineapple"] = "🍍",
+	["Kiwi"] = "🥝",
+	["Bell Pepper"] = "🫑",
+	["Prickly Pear"] = "🌵",
+	["Loquat"] = "🍑", -- closest emoji
+	["Feijoa"] = "🍈",
+	["Pitcher"] = "🪣",
+	["Plant"] = "🪴",
+	["Sugar Apple"] = "🍏"
+	-- Gear Shop Items
+	["Watering Can"] = "💧",
+	["Trowel"] = "🧱",
+	["Recall Wrench"] = "🔧",
+	["Basic Sprinkler"] = "⚙️",
+	["Advanced Sprinkler"] = "🔩",
+	["Godly Sprinkler"] = "🌟",
+	["Magnifying Glass"] = "🔍",
+	["Tanning Mirror"] = "🪞",
+	["Master Sprinkler"] = "🏆",
+	["Cleaning Spray"] = "🧼",
+	["Favorite Tool"] = "❤️",
+	["Harvest Tool"] = "🌾",
+	["Friendship Pot"] = "🪴",
+}
+
+local function MakeStockString(Stock: table): string
+	local result = ""
+	for Name, Data in Stock do 
+		local Amount = Data.Stock
+		local DisplayName = Data.EggName or Name
+
+		local Emoji = EmojiMap[DisplayName] or "📦"
+		result ..= `{Emoji} {DisplayName}: **x{Amount}**\n`
+	end
+	return result
+end
+
+
+--// Discord Send
 local function WebhookSend(Type: string, Fields: table)
 	if not GetConfigValue("Enabled") then return end
 	local Layout = GetLayout(Type)
 	local Color = ConvertColor3(Layout.EmbedColor)
 
-	local TimeStamp = DateTime.now():ToIsoDate()
 	local Body = {
 		embeds = {{
 			color = Color,
 			fields = Fields,
 			footer = { text = "Created by Laire Neil Villena" },
-			timestamp = TimeStamp
+			timestamp = DateTime.now():ToIsoDate()
 		}}
 	}
 
-	local RequestData = {
-		Url = GetConfigValue("Webhook"),
-		Method = "POST",
-		Headers = { ["Content-Type"] = "application/json" },
-		Body = HttpService:JSONEncode(Body)
-	}
-
-	task.spawn(request, RequestData)
+	task.spawn(function()
+		request({
+			Url = GetConfigValue("Webhook"),
+			Method = "POST",
+			Headers = { ["Content-Type"] = "application/json" },
+			Body = HttpService:JSONEncode(Body)
+		})
+	end)
 end
 
-local function MakeStockString(Stock: table): string
-	local String = ""
-	for Name, Data in Stock do 
-		local Amount = Data.Stock
-		local EggName = Data.EggName 
-		Name = EggName or Name
-		String ..= `{Name} **x{Amount}**\n`
-	end
-	return String
-end
-
+--// Process Inventory Data
 local function ProcessPacket(Data, Type: string, Layout)
 	local Fields = {}
 	local FieldsLayout = Layout.Layout
 	if not FieldsLayout then return end
 
-	for Packet, Title in FieldsLayout do 
-		local Stock = GetDataPacket(Data, Packet)
+	for Path, Label in FieldsLayout do 
+		local Stock = GetDataPacket(Data, Path)
 		if not Stock then return end
 
-		local Field = {
-			name = Title,
+		table.insert(Fields, {
+			name = Label,
 			value = MakeStockString(Stock),
 			inline = true
-		}
-		table.insert(Fields, Field)
+		})
 	end
 
+	-- Send to Discord
 	WebhookSend(Type, Fields)
 
-	-- Facebook post for SeedsAndGears
+	-- Send to Make.com (Facebook / Messenger)
 	if Type == "SeedsAndGears" then
-		local CombinedStock = ""
-		for _, field in Fields do
-			CombinedStock ..= `📦 {field.name}\n{field.value}\n\n`
-		end
-
-		local FacebookMessage = table.concat({
-			"🛒 **Grow a Garden Item Stock Update**",
+		local combinedMessage = table.concat({
+			"==============================",
+			"🌟 **GROW A GARDEN - STOCK ALERT** 🌟",
+			"==============================",
 			"",
-			CombinedStock,
-			"🌱 Hurry before it runs out!",
-			"🎮 Game: Grow a Garden"
+			"🛒 *New Items Just Restocked!*",
+			"",
 		}, "\n")
 
-		FacebookPost(FacebookMessage)
+		for _, field in Fields do
+			combinedMessage ..= `\n📌 *{field.name}*\n{field.value}`
+		end
+
+		combinedMessage ..= table.concat({
+			"",
+			"==============================",
+			"🌱 Grab them while supplies last!",
+			"🎮 Play now: https://www.roblox.com/games/126884695634066",
+			"",
+			"#GrowAGarden #RobloxFarming #StockAlert"
+		}, "\n")
+
+		-- 🔁 Send to Make.com webhook
+		SendToMakeCom({
+			source = "Grow A Garden Bot",
+			type = "stock",
+			message = combinedMessage
+		})
 	end
 end
 
---// Weather Event
-WeatherEventStarted.OnClientEvent:Connect(function(Event: string, Length: number)
+
+local WeatherEmojiMap = {
+	["Wet"] = "💧",
+	["Windstruc"] = "🌬️",
+	["Moonlit"] = "🌙",
+	["Chilled"] = "🧊",
+	["Choc"] = "🍫",
+	["Bloodil"] = "🩸",
+	["Twisted"] = "🌀",
+	["Drenched"] = "🌊",
+	["Frozen"] = "❄️",
+	["Aurora"] = "🌈",
+	["Shocked"] = "⚡",
+	["Celestial"] = "✨"
+}
+--// Weather Event Reporting
+WeatherEventStarted.OnClientEvent:Connect(function(Event: string, Duration: number)
 	if not GetConfigValue("Weather Reporting") then return end
 
-	local ServerTime = math.round(workspace:GetServerTimeNow())
-	local EndUnix = ServerTime + Length
+	local EndTime = math.round(workspace:GetServerTimeNow()) + Duration
+	local Emoji = WeatherEmojiMap[Event] or "🌫️" -- fallback if unknown
 
-	local FacebookMessage = table.concat({
-		"🌤️ **Weather Event Detected!**",
-		"",
-		`🌪️ Type: {Event}`,
-		`⏱️ Duration: {Length} seconds`,
-		"",
-		"🎮 Game: Grow a Garden",
-		"📌 Stock will auto-update here. Stay tuned!"
+	local weatherMessage = table.concat({
+		"🌦️ **Weather Event Detected!**",
+		`{Emoji} Type: {Event}`,
+		`⏱️ Duration: {Duration} seconds`,
+		"🎮 Game: Grow a Garden"
 	}, "\n")
 
-	FacebookPost(FacebookMessage)
+	SendToMakeCom({
+		source = "Grow A Garden Bot",
+		type = "weather",
+		message = weatherMessage,
+		event = Event,
+		duration = Duration,
+		unix_ends = EndTime
+	})
 
 	WebhookSend("Weather", {{
 		name = "WEATHER",
-		value = `{Event}\nEnds:<t:{EndUnix}:R>`,
+		value = `{Emoji} {Event}\nEnds: <t:{EndTime}:R>`,
 		inline = true
 	}})
 end)
 
---// Stock Data Stream
+
+--// Receive Stock Updates
 DataStream.OnClientEvent:Connect(function(Type: string, Profile: string, Data: table)
 	if Type ~= "UpdateData" then return end
 	if not Profile:find(LocalPlayer.Name) then return end
 
-	local Layouts = GetConfigValue("AlertLayouts")
-	for Name, Layout in Layouts do
+	for Name, Layout in GetConfigValue("AlertLayouts") do
 		ProcessPacket(Data, Name, Layout)
 	end
 end)
 
---// Anti idle
+--// Anti-AFK
 LocalPlayer.Idled:Connect(function()
 	if not GetConfigValue("Anti-AFK") then return end
 	VirtualUser:CaptureController()
 	VirtualUser:ClickButton2(Vector2.new())
 end)
 
---// Auto reconnect
+--// Auto-Reconnect
 GuiService.ErrorMessageChanged:Connect(function()
 	if not GetConfigValue("Auto-Reconnect") then return end
 
-	local IsSingle = #Players:GetPlayers() <= 1
-	local PlaceId = game.PlaceId
-	local JobId = game.JobId
+	local isSolo = #Players:GetPlayers() <= 1
+	local placeId = game.PlaceId
+	local jobId = game.JobId
 
 	queue_on_teleport("https://rawscripts.net/raw/Grow-a-Garden-Grow-a-Garden-Stock-bot-41500")
 
-	if IsSingle then
-		TeleportService:Teleport(PlaceId, LocalPlayer)
+	if isSolo then
+		TeleportService:Teleport(placeId, LocalPlayer)
 	else
-		TeleportService:TeleportToPlaceInstance(PlaceId, JobId, LocalPlayer)
+		TeleportService:TeleportToPlaceInstance(placeId, jobId, LocalPlayer)
 	end
 end)
+
+--// Enable Rendering Option
+RunService:Set3dRenderingEnabled(GetConfigValue("Rendering Enabled"))
